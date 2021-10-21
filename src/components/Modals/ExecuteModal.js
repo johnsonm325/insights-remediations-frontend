@@ -147,7 +147,7 @@ export const ExecuteModal = ({
 
   return (
     <Modal
-      className="remediations ins-c-execute-modal"
+      className="remediations rem-c-execute-modal"
       variant={isDebug() ? ModalVariant.large : ModalVariant.small}
       title={'Execute playbook'}
       isOpen={isOpen}
@@ -170,7 +170,11 @@ export const ExecuteModal = ({
                   setActiveAlert({
                     key: generateUniqueId(),
                     title: `Executing playbook ${remediationName}`,
-                    description: `View results in the <b>Activity tab</b>`,
+                    description: (
+                      <span>
+                        View results in the <b>Activity tab</b>
+                      </span>
+                    ),
                     variant: 'success',
                   });
                 }}
@@ -220,7 +224,7 @@ export const ExecuteModal = ({
             ]
       }
     >
-      <div className="ins-c-execute-modal__body">
+      <div className="rem-c-execute-modal__body">
         {showRefresh ? (
           <Alert
             variant="warning"
