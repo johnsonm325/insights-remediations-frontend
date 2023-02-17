@@ -1,164 +1,110 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import propTypes from 'prop-types';
-import useFieldApi from '@data-driven-forms/react-form-renderer/use-field-api';
 import useFormApi from '@data-driven-forms/react-form-renderer/use-form-api';
-import {
-  Table,
-  TableVariant,
-  TableHeader,
-  TableBody,
-  sortable,
-  expandable,
-} from '@patternfly/react-table';
-import {
-  Radio,
-  Text,
-  TextContent,
-  Stack,
-  StackItem,
-} from '@patternfly/react-core';
-import {
-  buildRows,
-  onCollapse,
-  pluralize,
-  EXISTING_PLAYBOOK,
-  EXISTING_PLAYBOOK_SELECTED,
-  ISSUES_MULTIPLE,
-  SYSTEMS,
-} from '../../../Utilities/utils';
+import { Text, TextContent, Stack, StackItem } from '@patternfly/react-core';
+import { pluralize, ISSUES_MULTIPLE, SYSTEMS } from '../../../Utilities/utils';
 import './reviewActions.scss';
+import './issueResolutionSelections.scss';
+import IssueResolutionSelections from './issueResolutionSelections';
+import { TableComposable, Tr } from '@patternfly/react-table';
+import { useFieldApi } from '@data-driven-forms/react-form-renderer';
 
 const ReviewActions = (props) => {
   const formOptions = useFormApi();
+  const { input } = useFieldApi(props);
   const values = formOptions.getState().values;
+  const [issuesMultiple, setIssuesMultiple] = useState(values[ISSUES_MULTIPLE]);
+  useEffect(() => {
+    setIssuesMultiple(values[ISSUES_MULTIPLE]);
+  }, []);
+
+  const getMultipleResolutions = () => {
+    let multipleResolutions = issuesMultiple?.filter((issue) => {
+      return issue.resolutions.length > 1;
+    });
+
+    return multipleResolutions;
+  };
+
+  const [issuesWithMultipleResolutions, setIssuesWithMultipleResolutions] =
+    useState(getMultipleResolutions());
+
+  const [radioSelected, setRadioSelected] = useState(
+    Array(issuesWithMultipleResolutions?.length).fill(false)
+  );
+
   const issues = props.issues.filter((issue) =>
     Object.keys(values[SYSTEMS]).includes(issue.id)
   );
-  const { input } = useFieldApi(props);
-  const [sortByState, setSortByState] = useState({
-    index: undefined,
-    direction: undefined,
-  });
+
   const allSystemsNamed = useSelector(
     ({ hostReducer: { hosts } }) =>
       hosts?.map((host) => ({ id: host.id, name: host.display_name })) || []
   );
 
-  const multiples = (
-    values[EXISTING_PLAYBOOK_SELECTED]
-      ? values[ISSUES_MULTIPLE].filter(
-          (issue) =>
-            !values[EXISTING_PLAYBOOK].issues.some((i) => i.id === issue.id)
-        )
-      : values[ISSUES_MULTIPLE]
-  )
-    .map((issue) => ({
-      ...issue,
-      systems: values[SYSTEMS][issue.id],
-    }))
-    .filter((record) => record?.systems?.length > 0);
+  const handleRadioSelection = (issue, resolution, issueIndex) => {
+    let issuesMultipleCopy = issuesMultiple;
+    let foundIssue = issuesMultiple?.find((item) => {
+      return item.action === issue.action;
+    });
 
-  const [rows, setRows] = useState(
-    buildRows(multiples, sortByState, true, allSystemsNamed)
-  );
+    foundIssue.resolutions.map((res) => {
+      if (resolution.description === res.description) {
+        return (res.selected = true);
+      } else {
+        return (res.selected = false);
+      }
+    });
 
-  useEffect(() => {
-    setRows(buildRows(multiples, sortByState, true, allSystemsNamed));
-  }, [sortByState]);
+    issuesMultipleCopy.forEach((item) => {
+      if (item.action === foundIssue.action) {
+        item = foundIssue;
+      }
+    });
+
+    setIssuesMultiple(issuesMultipleCopy);
+    setIssuesWithMultipleResolutions(getMultipleResolutions());
+    let radioSelectedCopy = radioSelected;
+    radioSelectedCopy[issueIndex] = true;
+    setRadioSelected(radioSelectedCopy);
+    input.onChange(radioSelectedCopy);
+    formOptions.change(ISSUES_MULTIPLE, issuesMultipleCopy);
+  };
 
   return (
     <Stack hasGutter data-component-ouia-id="wizard-review-actions">
       <StackItem>
         <TextContent>
           <Text>
-            You have selected{' '}
-            <b>{`${issues.length} ${pluralize(issues.length, 'item')}`}</b> to
-            remediate.{' '}
             <b>
-              {multiples.length} of{' '}
-              {`${issues.length} ${pluralize(issues.length, 'item')}`}
-            </b>
-            {multiples.length !== 1 ? ' allow' : ' allows'} for you to chose
-            from multiple resolution steps.
+              {`${getMultipleResolutions().length}`} of the {`${issues.length}`}{' '}
+              selected {`${pluralize(issues.length, 'issue')}`}
+            </b>{' '}
+            to add to this playbook require additional review.
+            <br />
+            <br />
+            There are multiple playbooks available to resolve or mitigate the{' '}
+            following issues. Select the desired playbook for each issue. The{' '}
+            recommended playbook for most use cases is pre-selected.
           </Text>
         </TextContent>
       </StackItem>
       <StackItem>
-        <Radio
-          label={`Review and/or change the resolution steps for ${
-            multiples.length !== 1 ? 'these' : 'this'
-          }
-                         ${multiples.length} ${pluralize(
-            multiples.length,
-            'action'
-          )}.`}
-          id="change"
-          name="radio"
-          isChecked={input.value}
-          onChange={() => input.onChange(true)}
-        />
-        {issues.length - multiples.length > 0 && (
-          <Text className="rem-c-choose-actions-description">
-            {`The ${
-              issues.length - multiples.length
-            } other selected ${pluralize(
-              issues.length - multiples.length,
-              'issue'
-            )} 
-                    ${
-                      issues.length - multiples.length !== 1 ? 'do' : 'does'
-                    } not have multiple resolution options.`}
-          </Text>
-        )}
-      </StackItem>
-      <Table
-        aria-label="Actions"
-        className="ins-c-remediation-summary-table"
-        variant={TableVariant.compact}
-        onCollapse={(event, rowKey, isOpen) =>
-          onCollapse(event, rowKey, isOpen, rows, setRows)
-        }
-        cells={[
-          {
-            title: 'Action',
-            transforms: [sortable],
-          },
-          {
-            title: 'Resolution',
-            transforms: [sortable],
-          },
-          {
-            title: 'Reboot required',
-            transforms: [sortable],
-          },
-          {
-            title: 'Systems',
-            transforms: [sortable],
-            cellFormatters: [expandable],
-          },
-        ]}
-        rows={rows}
-        onSort={(event, index, direction) =>
-          setSortByState({ index, direction })
-        }
-        sortBy={sortByState}
-      >
-        <TableHeader noWrap />
-        <TableBody />
-      </Table>
-      <StackItem>
-        <Radio
-          label={'Accept all recommended resolution steps for all actions'}
-          id="accept"
-          name="radio"
-          isChecked={!input.value}
-          onChange={() => input.onChange(false)}
-        />
-        <Text className="rem-c-choose-actions-description">
-          You may modify reboot status to manual reboot in the next step, or
-          from the playbook.
-        </Text>
+        <TableComposable>
+          {issuesWithMultipleResolutions.map((issue, index) => {
+            return (
+              <IssueResolutionSelections
+                allSystemsNamed={allSystemsNamed}
+                key={`${issue.action}`}
+                issue={issue}
+                handleRadioSelection={handleRadioSelection}
+                issueIndex={index}
+              />
+            );
+          })}
+          <Tr className="resolutions-review-table-rows" />
+        </TableComposable>
       </StackItem>
     </Stack>
   );

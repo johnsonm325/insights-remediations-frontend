@@ -53,7 +53,6 @@ const RemediationButton = ({
               setNoDataModalOpen(true);
               return;
             }
-
             validate(data);
             setRemediationsData(data);
           });

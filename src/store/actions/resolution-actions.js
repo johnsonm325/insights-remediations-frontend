@@ -30,7 +30,9 @@ const batchResolutions = async (issues) => {
   }
 };
 
-export const fetchResolutions = (issues = []) => ({
-  type: FETCH_RESOLUTIONS,
-  payload: batchResolutions(issues),
-});
+export const fetchResolutions = (issues = []) => {
+  return {
+    type: FETCH_RESOLUTIONS,
+    payload: batchResolutions(issues),
+  };
+};

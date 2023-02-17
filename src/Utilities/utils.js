@@ -62,8 +62,8 @@ export const buildRows = (
   sortByState,
   showAlternate,
   allSystemsNamed
-) =>
-  sortRecords(records, sortByState).reduce(
+) => {
+  return sortRecords(records, sortByState).reduce(
     (acc, curr, index) => [
       ...acc,
       {
@@ -121,12 +121,18 @@ export const buildRows = (
     ],
     []
   );
+};
 
-const buildSystemRow = (allSystemsNamed = [], allSystems = []) => (
+export const buildSystemRow = (
+  allSystemsNamed = [],
+  allSystems = [],
+  classname = ''
+) => (
   <Router>
     <SystemsTableWithContext
       allSystemsNamed={allSystemsNamed}
       allSystems={allSystems}
+      classname={classname}
       disabledColumns={['updated']}
     />
   </Router>
@@ -147,9 +153,12 @@ export const onCollapse = (event, rowKey, isOpen, rows, setRows) => {
 };
 
 export const getResolution = (issueId, formValues) => {
+  console.log(issueId, 'issueId');
   const issueResolutions =
     formValues[RESOLUTIONS].find((r) => r.id === issueId)?.resolutions || [];
 
+  console.log(issueResolutions, 'issueResolutions getResolution');
+  console.log(formValues, 'formValues');
   if (
     formValues[MANUAL_RESOLUTION] &&
     issueId in formValues[SELECTED_RESOLUTIONS]
@@ -198,7 +207,8 @@ export const submitRemediation = (formValues, data, basePath, setState) => {
           ?.systems?.map((s) => s.id) || [];
       return {
         id,
-        resolution: getResolution(id, formValues)?.[0]?.id,
+        resolution: getResolution(id, formValues)?.find((res) => res.selected)
+          .id,
         systems: dedupeArray([
           ...(formValues[EXISTING_PLAYBOOK_SELECTED] ? [] : playbookSystems),
           ...(formValues[SYSTEMS][id] || []),
@@ -407,22 +417,16 @@ export const getIssuesMultiple = (
   systems = [],
   resolutions = []
 ) =>
-  issues
-    .map((issue) => {
-      const issueResolutions =
-        resolutions.find((r) => r.id === issue.id)?.resolutions || [];
-      const { description, needs_reboot: needsReboot } =
-        issueResolutions?.[0] || {};
-      return {
-        action: issues.find((i) => i.id === issue.id).description,
-        resolution: description,
-        needsReboot,
-        systems: dedupeArray([...(issue.systems || []), ...systems]),
-        id: issue.id,
-        alternate: issueResolutions?.length - 1,
-      };
-    })
-    .filter((record) => record.alternate > 0);
+  issues.map((issue) => {
+    const issueResolutions =
+      resolutions.find((r) => r.id === issue.id)?.resolutions || [];
+    return {
+      action: issues.find((i) => i.id === issue.id).description,
+      resolutions: issueResolutions,
+      systems: dedupeArray([...(issue.systems || []), ...systems]),
+      id: issue.id,
+    };
+  });
 
 export const matchPermissions = (permissionA, permissionB) => {
   const segmentsA = permissionA.split(':');

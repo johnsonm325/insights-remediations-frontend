@@ -5,12 +5,10 @@ import {
   MANUAL_RESOLUTION,
   EXISTING_PLAYBOOK,
   EXISTING_PLAYBOOK_SELECTED,
-  SELECTED_RESOLUTIONS,
   AUTO_REBOOT,
   SYSTEMS,
   ISSUES_MULTIPLE,
   RESOLUTIONS,
-  shortenIssueId,
 } from '../../Utilities/utils';
 
 export const selectPlaybookFields = [
@@ -48,6 +46,8 @@ export const reviewActionsFields = [
   {
     name: MANUAL_RESOLUTION,
     component: 'review-actions',
+    isRequired: true,
+    validate: [{ type: 'validate-resolutions-selected' }],
   },
 ];
 
@@ -61,6 +61,7 @@ export const reviewActionsNextStep = (values) => {
     : values[ISSUES_MULTIPLE].filter((issue) =>
         Object.keys(values[SYSTEMS]).includes(issue.id)
       );
+
   return values[MANUAL_RESOLUTION] ? filteredIssues[0]?.id : 'review';
 };
 
@@ -98,10 +99,15 @@ export const reviewSystemsNextStep = (values) => {
     : values[ISSUES_MULTIPLE].filter((issue) =>
         Object.keys(values[SYSTEMS]).includes(issue.id)
       );
-  return filteredIssues.length > 0 ? 'actions' : 'review';
+
+  return filteredIssues.some((filteredIssue) => {
+    return filteredIssue.resolutions.length > 1;
+  })
+    ? 'actions'
+    : 'review';
 };
 
-export default (issues) => ({
+export default () => ({
   fields: [
     {
       component: componentTypes.WIZARD,
@@ -132,29 +138,11 @@ export default (issues) => ({
         },
         {
           name: 'actions',
-          title: 'Review and edit actions',
+          title: 'Issues with multiple resolutions',
           fields: reviewActionsFields,
-          nextStep: ({ values }) => reviewActionsNextStep(values, issues),
+          nextStep: 'review',
+          substepOf: 'Review and edit actions',
         },
-        ...(issues?.map((issue) => ({
-          name: issue.id,
-          title: shortenIssueId(issue.id),
-          showTitle: false,
-          fields: [
-            {
-              name: issue.id,
-              component: 'issue-resolution',
-              issue,
-            },
-            {
-              name: SELECTED_RESOLUTIONS,
-              component: componentTypes.TEXT_FIELD,
-              hideField: true,
-            },
-          ],
-          nextStep: ({ values }) => issueResolutionNextStep(values, issue),
-          substepOf: 'Choose actions',
-        })) || []),
         {
           name: 'review',
           title: 'Remediation review',

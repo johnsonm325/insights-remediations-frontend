@@ -135,6 +135,10 @@ export const RemediationWizard = ({ setOpen, data, basePath, registry }) => {
       Object.values(value).filter((value) => typeof value !== undefined).length
         ? undefined
         : 'At least one system must be selected. Actions must be associated to a system to be added to a playbook.',
+    'validate-resolutions-selected': () => (value) =>
+      Array.isArray(value) && value.every((v) => v === true)
+        ? undefined
+        : 'required',
   };
 
   return (
@@ -143,9 +147,9 @@ export const RemediationWizard = ({ setOpen, data, basePath, registry }) => {
         <FormRenderer
           schema={state.schema}
           subscription={{ values: true }}
-          FormTemplate={(props) => (
-            <Pf4FormTemplate {...props} showFormControls={false} />
-          )}
+          FormTemplate={(props) => {
+            return <Pf4FormTemplate {...props} showFormControls={false} />;
+          }}
           initialValues={{
             [RESOLUTIONS]: [],
             [ISSUES_MULTIPLE]: [],

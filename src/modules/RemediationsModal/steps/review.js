@@ -57,13 +57,16 @@ const Review = (props) => {
       hosts?.map((host) => ({ id: host.id, name: host.display_name })) || []
   );
 
+  console.log(data.issues, 'data.issues');
   const records = data.issues.map((issue) => {
     const issueResolutions = getResolution(
       issue.id,
       formOptions.getState().values
     );
-    const { description, needs_reboot: needsReboot } =
-      issueResolutions?.[0] || {};
+    console.log(issueResolutions, 'issueResolutions');
+    const { description, needs_reboot: needsReboot } = issueResolutions?.find(
+      (resolution) => resolution.selected
+    );
     return {
       action: issuesById[issue.id].description,
       resolution: description,
